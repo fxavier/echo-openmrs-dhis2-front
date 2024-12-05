@@ -9,6 +9,14 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route
+          path="/"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
           path="/dashboard"
           element={
             <Layout>

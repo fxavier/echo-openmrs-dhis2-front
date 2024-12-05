@@ -32,26 +32,39 @@ export const mergeWorkbooks = (workbooks: WorkBook[]): WorkBook => {
   remainingWorkbooks.forEach((workbook) => {
     Object.keys(workbook.Sheets).forEach((sheetName) => {
       if (baseWorkbook.Sheets[sheetName]) {
-        // Get data and styles from both sheets
         const baseSheet = baseWorkbook.Sheets[sheetName];
         const newSheet = workbook.Sheets[sheetName];
         
-        // Convert sheets to JSON with styles
         const baseData = utils.sheet_to_json(baseSheet, { header: 1, raw: false }) as ExcelValue[][];
         const newData = utils.sheet_to_json(newSheet, { header: 1, raw: false }) as ExcelValue[][];
         
-        // Skip first 7 rows from the new sheet and append the rest
-        const rowsToAdd = newData.slice(7);
+        const rowsToAdd = newData.slice(7).filter(row => row.some(cell => cell !== null && cell !== ''));
         baseData.push(...rowsToAdd);
         
-        // Convert back to sheet with styles
-        baseWorkbook.Sheets[sheetName] = utils.aoa_to_sheet(baseData);
+        const updatedSheet = utils.aoa_to_sheet(baseData);
+        
+        updatedSheet['!merges'] = baseSheet['!merges'];
+        updatedSheet['!cols'] = baseSheet['!cols'];
+        updatedSheet['!rows'] = baseSheet['!rows'];
+        
+        Object.keys(baseSheet).forEach((cell) => {
+          if (cell[0] !== '!') {
+            updatedSheet[cell] = {
+              ...baseSheet[cell],
+              v: updatedSheet[cell]?.v,
+              s: baseSheet[cell].s
+            };
+          }
+        });
+        
+        baseWorkbook.Sheets[sheetName] = updatedSheet;
       } else {
-        // If sheet doesn't exist in base workbook, add it (skipping first 7 rows)
         const newSheet = workbook.Sheets[sheetName];
         const newData = utils.sheet_to_json(newSheet, { header: 1, raw: false }) as ExcelValue[][];
-        const rowsToAdd = newData.slice(7);
-        baseWorkbook.Sheets[sheetName] = utils.aoa_to_sheet(rowsToAdd);
+        const rowsToAdd = newData.slice(7).filter(row => row.some(cell => cell !== null && cell !== ''));
+        const newSheetWithStyles = utils.aoa_to_sheet(rowsToAdd);
+        
+        baseWorkbook.Sheets[sheetName] = newSheetWithStyles;
         if (!baseWorkbook.SheetNames.includes(sheetName)) {
           baseWorkbook.SheetNames.push(sheetName);
         }
